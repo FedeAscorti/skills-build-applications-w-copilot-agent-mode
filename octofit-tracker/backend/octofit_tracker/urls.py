@@ -14,6 +14,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
+import os
+
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework import routers
@@ -30,16 +32,30 @@ router.register(r'leaderboard', LeaderboardViewSet)
 
 @api_view(['GET'])
 def api_root(request):
+    """
+    Return API root links. If running in Codespaces, prefer the external HTTPS URL based on
+    the CODESPACE_NAME environment variable to ensure returned URLs match the codespace URL
+    (format: https://$CODESPACE_NAME-8000.app.github.dev/api/[component]/). If not present,
+    fall back to request.build_absolute_uri for local runs.
+    """
+    codespace_name = os.environ.get('CODESPACE_NAME')
+    if codespace_name:
+        base = f"https://{codespace_name}-8000.app.github.dev/api/"
+    else:
+        # fallback to the request host/URL (will include scheme and host)
+        base = request.build_absolute_uri('/api/')
+
     return Response({
-        'users': request.build_absolute_uri('users/'),
-        'teams': request.build_absolute_uri('teams/'),
-        'activities': request.build_absolute_uri('activities/'),
-        'workouts': request.build_absolute_uri('workouts/'),
-        'leaderboard': request.build_absolute_uri('leaderboard/'),
+        'users': base + 'users/',
+        'teams': base + 'teams/',
+        'activities': base + 'activities/',
+        'workouts': base + 'workouts/',
+        'leaderboard': base + 'leaderboard/',
     })
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', api_root, name='api-root'),
-    path('', include(router.urls)),
+    # expose all API endpoints under /api/
+    path('api/', api_root, name='api-root'),
+    path('api/', include(router.urls)),
 ]
